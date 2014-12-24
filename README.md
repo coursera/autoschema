@@ -6,10 +6,11 @@ Features
 * Generates JSON Schema from classes
 * Annotate your classes to customize schema generation
 * Supports common types
-    * Lists, Arrays, etc.
+    * Seq, Lists, Arrays, etc.
     * Options
     * java.util.Date and Joda DateTime
     * String, Boolean, Int, Long, Double
+    * java.util.UUID
 * Caching of generated schema
 
 Unsupported Features
@@ -33,6 +34,13 @@ With a reflection type
 
 ## Annotations
 AutoSchema has a few annotations that you can use to customize generated schema
+
+### Description
+Lets you manually define comments for case clases and fields which are translated in a description field
+of the commented element in the JSON schema.
+
+        @Description("This is my class")
+        case class MyClass(@Term.Description("This is my field") myField: String)
 
 ### FormatAs
 Lets you manually set the type and format values of the schema to be generated for a specific type or value

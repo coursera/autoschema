@@ -16,9 +16,7 @@
 
 package org.coursera.autoschema
 
-import play.api.libs.json.JsArray
-import play.api.libs.json.Json
-import play.api.libs.json.JsObject
+import play.api.libs.json.{JsString, JsArray, Json, JsObject}
 
 import scala.reflect.runtime.{universe => ru}
 
@@ -47,7 +45,8 @@ object AutoSchema {
     "scala.Boolean" -> Json.obj("type" -> "boolean"),
     "scala.Int" -> Json.obj("type" -> "number", "format" -> "number"),
     "scala.Long" -> Json.obj("type" -> "number", "format" -> "number"),
-    "scala.Double" -> Json.obj("type" -> "number", "format" -> "number")
+    "scala.Double" -> Json.obj("type" -> "number", "format" -> "number"),
+    "java.util.UUID" -> Json.obj("type" -> "string", "pattern" -> "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
   )
 
   private[this] val classSchemaCache = collection.concurrent.TrieMap[String, JsObject]()
@@ -64,6 +63,9 @@ object AutoSchema {
   private[this] val isTermExposeAnnotation = (annotation: ru.Annotation) =>
     annotation.tpe.typeSymbol.fullName == "org.coursera.autoschema.annotations.Term.ExposeAs"
 
+  private[this] val isDescriptionAnnotation = (annotaion: ru.Annotation) =>
+    annotaion.tpe.typeSymbol.fullName == "org.coursera.autoschema.annotations.Description"
+
   // Generates JSON schema based on a FormatAs annotation
   private[this] def formatAnnotationJson(annotation: ru.Annotation) = {
     annotation.scalaArgs match {
@@ -71,6 +73,16 @@ object AutoSchema {
         Json.obj("type" -> typ.toString.tail.init)
       case typ :: format :: Nil =>
         Json.obj("type" -> typ.toString.tail.init, "format" -> format.toString.tail.init)
+      case _ =>
+        Json.obj()
+    }
+  }
+
+  private [this] def descriptionAnnotationJson(annotation: ru.Annotation) = {
+    annotation.scalaArgs match {
+      case description :: Nil =>
+        Some("description" -> JsString(description.toString.tail.init))
+      case _ => None
     }
   }
 
@@ -87,11 +99,17 @@ object AutoSchema {
               .getOrElse {
               term.annotations.find(isTermExposeAnnotation)
                 .map(annotation =>
-                  createSchema(annotation.tpe.asInstanceOf[ru.TypeRefApi].args.head, previousTypes))
+                createSchema(annotation.tpe.asInstanceOf[ru.TypeRefApi].args.head, previousTypes))
                 .getOrElse(createSchema(term.typeSignature, previousTypes + tpe.typeSymbol.fullName))
             }
 
-            Some(term.name.decoded.trim -> termFormat)
+            val description = term.annotations.find(isDescriptionAnnotation).flatMap(descriptionAnnotationJson)
+            val termFormatWithDescription = description match  {
+              case Some(value) => termFormat + value
+              case None => termFormat
+            }
+
+            Some(term.name.decoded.trim -> termFormatWithDescription)
           } else {
             None
           }
@@ -111,6 +129,14 @@ object AutoSchema {
     tpe.baseClasses.exists(_.fullName == "scala.Enumeration.Value")
   }
 
+  private[this] def addDescription[T](tpe: ru.Type, obj: JsObject): JsObject = {
+    val description = tpe.typeSymbol.annotations.find(isDescriptionAnnotation).flatMap(descriptionAnnotationJson)
+    description match {
+      case Some(descr) => obj + descr
+      case None => obj
+    }
+  }
+
   private[this] def createSchema(tpe: ru.Type, previousTypes: Set[String]): JsObject = {
     val typeName = tpe.typeSymbol.fullName
 
@@ -124,19 +150,26 @@ object AutoSchema {
       }.toList
 
       val optionsArr = JsArray(options)
-      Json.obj(
+      val enumJson = Json.obj(
         "type" -> "string",
         "enum" -> optionsArr
       )
+      addDescription(tpe, enumJson)
+
     } else if (typeName == "scala.Option") {
       // Option[T] becomes the schema of T with required set to false
-      Json.obj("required" -> false) ++ createSchema(tpe.asInstanceOf[ru.TypeRefApi].args.head, previousTypes)
+      val jsonOption = Json.obj("required" -> false) ++ createSchema(tpe.asInstanceOf[ru.TypeRefApi].args.head, previousTypes)
+      addDescription(tpe, jsonOption)
     } else if (tpe.baseClasses.exists(s => s.fullName == "scala.collection.Traversable" ||
-                                           s.fullName == "scala.Array")) {
+                                           s.fullName == "scala.Array" ||
+                                           s.fullName == "scala.Seq" ||
+                                           s.fullName == "scala.List" ||
+                                           s.fullName == "scala.Vector")) {
       // (Traversable)[T] becomes a schema with items set to the schema of T
-      Json.obj("type" -> "array", "items" -> createSchema(tpe.asInstanceOf[ru.TypeRefApi].args.head, previousTypes))
+      val jsonSeq = Json.obj("type" -> "array", "items" -> createSchema(tpe.asInstanceOf[ru.TypeRefApi].args.head, previousTypes))
+      addDescription(tpe, jsonSeq)
     } else {
-      tpe.typeSymbol.annotations.find(isFormatAnnotation)
+      val jsonObj = tpe.typeSymbol.annotations.find(isFormatAnnotation)
         .map(formatAnnotationJson)
         .getOrElse {
         tpe.typeSymbol.annotations.find(isExposeAnnotation)
@@ -156,6 +189,7 @@ object AutoSchema {
           })
         }
       }
+      addDescription(tpe, jsonObj)
     }
   }
 
@@ -176,4 +210,24 @@ object AutoSchema {
    * The JSON Schema for the type as a JsObject
    */
   def createSchema[T: ru.TypeTag]: JsObject = createSchema(ru.typeOf[T])
+
+  /**
+   * Create a schema and format it according to the style
+   * @param tpe The reflection type to be converted into JSON Schema
+   * @param indent The left margin indent in pixels
+   * @return The JSON Schema for the type as a formatted string
+   */
+  def createPrettySchema(tpe: ru.Type, indent: Int) =
+    styleSchema(Json.prettyPrint(createSchema(tpe)), indent)
+
+  /**
+   * Create a schema and format it according to the style
+   * @param indent The left margin indent in pixels
+   * @return The JSON Schema for the type as a formatted string
+   */
+  def createPrettySchema[T: ru.TypeTag](indent: Int) =
+    styleSchema(Json.prettyPrint(createSchema(ru.typeOf[T])), indent)
+
+  private[this] def styleSchema(schema: String, indent: Int) =
+    s"""<div style="margin-left: ${indent}px; background-color: #E8E8E8; border-width: 1px;"><i>${schema}</i></div>"""
 }
