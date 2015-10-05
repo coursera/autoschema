@@ -18,6 +18,7 @@ package org.coursera.AutoSchema
 
 import org.coursera.autoschema.AutoSchema.createSchema
 
+import org.coursera.autoschema.annotations.Description
 import org.coursera.autoschema.annotations.ExposeAs
 import org.coursera.autoschema.annotations.FormatAs
 import org.coursera.autoschema.annotations.Term
@@ -26,6 +27,7 @@ import org.junit.Test
 import org.scalatest.junit.AssertionsForJUnit
 
 import play.api.libs.json.Json
+import java.util.UUID
 
 case class TypeOne(param1: Int)
 case class TypeTwo(param1: Int, param2: Long)
@@ -45,10 +47,15 @@ case class TypeSixParamOne()
 case class TypeSixParamTwo()
 case class TypeSix(param1: TypeSixParamOne, @Term.ExposeAs[Int] param2: TypeSixParamTwo)
 
+case class TypeSeven(param1: UUID)
+
 case class RecursiveType(param1: RecursiveType)
 
 case class MutuallyRecursiveTypeOne(param1: MutuallyRecursiveTypeTwo)
 case class MutuallyRecursiveTypeTwo(param1: MutuallyRecursiveTypeOne)
+
+@Description("Type description")
+case class TypeWithDescription(@Term.Description("Parameter description") param1: String)
 
 class AutoSchemaTest extends AssertionsForJUnit {
   @Test
@@ -145,8 +152,40 @@ class AutoSchemaTest extends AssertionsForJUnit {
   }
 
   @Test
-  def collections: Unit = {
+  def typeSeven: Unit = {
+    assert(createSchema[TypeSeven] ===
+      Json.obj(
+        "title" -> "TypeSeven",
+        "type" -> "object",
+        "properties" -> Json.obj(
+          "param1" -> Json.obj(
+            "type" -> "string",
+            "pattern" -> "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"))))
+  }
+
+  @Test
+  def collections1: Unit = {
     assert(createSchema[Array[Int]] ===
+      Json.obj(
+        "type" -> "array",
+        "items" -> Json.obj(
+          "type" -> "number",
+          "format" -> "number")))
+  }
+
+  @Test
+  def collections2: Unit = {
+    assert(createSchema[List[Int]] ===
+      Json.obj(
+        "type" -> "array",
+        "items" -> Json.obj(
+          "type" -> "number",
+          "format" -> "number")))
+  }
+
+  @Test
+  def collections3: Unit = {
+    assert(createSchema[Seq[Int]] ===
       Json.obj(
         "type" -> "array",
         "items" -> Json.obj(
@@ -166,5 +205,18 @@ class AutoSchemaTest extends AssertionsForJUnit {
     intercept[IllegalArgumentException] {
       createSchema[MutuallyRecursiveTypeOne]
     }
+  }
+
+  @Test
+  def typeWithDescription: Unit = {
+    assert(createSchema[TypeWithDescription] ===
+      Json.obj(
+        "title" -> "TypeWithDescription",
+        "type" -> "object",
+        "properties" -> Json.obj(
+          "param1" -> Json.obj(
+            "type" -> "string",
+            "description" -> "Parameter description")),
+        "description" -> "Type description"))
   }
 }
