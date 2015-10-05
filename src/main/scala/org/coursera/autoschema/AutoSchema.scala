@@ -16,7 +16,10 @@
 
 package org.coursera.autoschema
 
-import play.api.libs.json.{JsString, JsArray, Json, JsObject}
+import play.api.libs.json.JsArray
+import play.api.libs.json.Json
+import play.api.libs.json.JsObject
+import play.api.libs.json.JsString
 
 import scala.reflect.runtime.{universe => ru}
 
