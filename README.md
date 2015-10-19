@@ -1,4 +1,7 @@
 # AutoSchema
+
+![Build Status](https://travis-ci.org/coursera/autoschema.svg?branch=master)
+
 ## Generate JSON Schema from Scala classes!
 
 Features
