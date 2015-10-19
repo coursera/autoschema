@@ -58,6 +58,19 @@ class FormatAs(tpe: String, format: String) extends StaticAnnotation {
 class ExposeAs[T] extends StaticAnnotation
 
 /**
+ * Lets you manually set a description for a field
+ * @example
+ * {{{
+ *      @Description("This is a custom date")
+ *      case class MyDateType
+ * }}}
+ *
+ * @param desription
+ * Optional: A description of the annotated field
+ */
+class Description(description: String) extends StaticAnnotation
+
+/**
  * Contains AutoSchema annotations that can be used on fields (vals, vars, etc.)
  */
 // @field marks annotations as usable on fields
@@ -94,4 +107,13 @@ object Term {
   @field
   class Hide extends StaticAnnotation
 
+  /**
+   * Same as [[annotations.Description]] but for fields
+   * @example
+   * {{{
+   *      case class MyType(@Term.Description("some id") id: MyTypeId)
+   * }}}
+   */
+  @field
+  type Description = annotations.Description@field
 }
