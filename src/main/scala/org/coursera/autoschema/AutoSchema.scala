@@ -20,6 +20,7 @@ import play.api.libs.json.JsArray
 import play.api.libs.json.Json
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
+import play.api.libs.json.JsBoolean
 
 import scala.reflect.runtime.{universe => ru}
 
@@ -69,6 +70,9 @@ object AutoSchema {
   private[this] val isDescriptionAnnotation = (annotaion: ru.Annotation) =>
     annotaion.tpe.typeSymbol.fullName == "org.coursera.autoschema.annotations.Description"
 
+  private[this] val isRequiredAnnotation = (annotation: ru.Annotation) =>
+    annotation.tpe.typeSymbol.fullName == "org.coursera.autoschema.annotations.Term.Required"
+
   // Generates JSON schema based on a FormatAs annotation
   private[this] def formatAnnotationJson(annotation: ru.Annotation) = {
     annotation.scalaArgs match {
@@ -87,6 +91,10 @@ object AutoSchema {
         Some("description" -> JsString(description.toString.tail.init))
       case _ => None
     }
+  }
+
+  private [this] def requiredAnnotationJson(annotation: ru.Annotation) = {
+    Some("required" -> JsBoolean.apply(true))
   }
 
   private[this] def createClassJson(tpe: ru.Type, previousTypes: Set[String]) = {
@@ -112,7 +120,13 @@ object AutoSchema {
               case None => termFormat
             }
 
-            Some(term.name.decoded.trim -> termFormatWithDescription)
+            val required = term.annotations.find(isRequiredAnnotation).flatMap(requiredAnnotationJson)
+            val termFormatWithRequired = required match {
+              case Some(value) => termFormatWithDescription + value
+              case None => termFormatWithDescription
+            }
+
+            Some(term.name.decoded.trim -> termFormatWithRequired)
           } else {
             None
           }

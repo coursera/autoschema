@@ -116,4 +116,15 @@ object Term {
    */
   @field
   type Description = annotations.Description@field
+
+  /**
+    * Marks the annotated field as a required field
+    * @example
+    * {{{
+    *      case class MyType(@Required myRequiredField: String)
+    * }}}
+    */
+  @field
+  class Required extends StaticAnnotation
+
 }
