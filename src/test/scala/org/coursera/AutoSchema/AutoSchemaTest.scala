@@ -57,6 +57,8 @@ case class MutuallyRecursiveTypeTwo(param1: MutuallyRecursiveTypeOne)
 @Description("Type description")
 case class TypeWithDescription(@Term.Description("Parameter description") param1: String)
 
+case class TypeWithRequired(@Term.Required param1: String)
+
 class AutoSchemaTest extends AssertionsForJUnit {
   @Test
   def justAnInt: Unit = {
@@ -218,5 +220,17 @@ class AutoSchemaTest extends AssertionsForJUnit {
             "type" -> "string",
             "description" -> "Parameter description")),
         "description" -> "Type description"))
+  }
+
+  @Test
+  def typeWithRequired: Unit = {
+    assert(createSchema[TypeWithRequired] ===
+      Json.obj(
+        "title" -> "TypeWithRequired",
+        "type" -> "object",
+        "properties" -> Json.obj(
+          "param1" -> Json.obj(
+            "type" -> "string",
+            "required" -> true))))
   }
 }

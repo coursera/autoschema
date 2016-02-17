@@ -70,6 +70,11 @@ Lets you hide a value in generated schema
 
         case class MyType(@Term.Hide mySecretField: Int)
 
+### Required
+Lets you specify a value as a required value
+
+        case class MyType(@Term.Required myRequiredField: Int)
+
 Copyright 2014 Coursera Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
