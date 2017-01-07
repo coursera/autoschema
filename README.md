@@ -12,7 +12,7 @@ Features
     * Seq, Lists, Arrays, etc.
     * Options
     * java.util.Date and Joda DateTime
-    * String, Boolean, Int, Long, Double
+    * String, Boolean, Int, Long, Double, BigInt, BigDecimal
     * java.util.UUID
 * Caching of generated schema
 
