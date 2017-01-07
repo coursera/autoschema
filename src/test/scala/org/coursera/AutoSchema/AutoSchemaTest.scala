@@ -49,6 +49,9 @@ case class TypeSix(param1: TypeSixParamOne, @Term.ExposeAs[Int] param2: TypeSixP
 
 case class TypeSeven(param1: UUID)
 
+case class TypeBig(param1: BigInt)
+case class TypeBigBig(param1: BigInt, param2: BigDecimal)
+
 case class RecursiveType(param1: RecursiveType)
 
 case class MutuallyRecursiveTypeOne(param1: MutuallyRecursiveTypeTwo)
@@ -161,6 +164,33 @@ class AutoSchemaTest extends AssertionsForJUnit {
           "param1" -> Json.obj(
             "type" -> "string",
             "pattern" -> "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"))))
+  }
+
+  @Test
+  def typeBig: Unit = {
+    assert(createSchema[TypeBig] ===
+      Json.obj(
+        "title" -> "TypeBig",
+        "type" -> "object",
+        "properties" -> Json.obj(
+          "param1" -> Json.obj(
+            "type" -> "number",
+            "format" -> "number"))))
+  }
+
+  @Test
+  def typeBigBig: Unit = {
+    assert(createSchema[TypeBigBig] ===
+      Json.obj(
+        "title" -> "TypeBigBig",
+        "type" -> "object",
+        "properties" -> Json.obj(
+          "param1" -> Json.obj(
+            "type" -> "number",
+            "format" -> "number"),
+          "param2" -> Json.obj(
+            "type" -> "number",
+            "format" -> "number"))))
   }
 
   @Test
